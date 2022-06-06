@@ -1,3 +1,5 @@
+# a fighter jet game basic implementation with 2d graphics using OpenGL API library
+
 from matplotlib.pyplot import sca
 import pygame
 from sympy import N
