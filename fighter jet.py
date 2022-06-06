@@ -59,16 +59,18 @@ def init():
 
 def border():
 
-    # drawing x-axis
+   
     glColor3f(1,0,0)
-    # glLineWidth(15)
+    # glLineWidth(10)
     glBegin(GL_LINES)
-    #horizontal border
+
+    
     glVertex2fv((-1,1))    
     glVertex2fv((1,1)) 
     glVertex2fv((-1,-1))    
     glVertex2fv((1,-1))
-    #vertical border
+ 
+
     glVertex2fv((-1,1))    
     glVertex2fv((-1,-1)) 
     glVertex2fv((1,-1))    
@@ -159,21 +161,6 @@ def main():
         input.extend(plane_vertices[7:-12])
         # input.extend(plane_vertices[-7:-3])
         draw_shappe(input,scale=(0.004,0.004),transformation=(-0.5,0.5))   
-        # draw_shappe(
-        # ((291,-232),
-        # (298,-265),
-        # (199,-238),
-        # # (197,-258),
-        # # (122,-260),
-        # (121,-200),
-        # (21,-265),
-        # (29,-233),
-
-        # ),scale=(0.004,0.004),transformation=(-0.5,0.5))
-
-
-
-
         pygame.display.flip()
         pygame.time.wait(10)
 
