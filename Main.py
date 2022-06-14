@@ -264,3 +264,281 @@ def rotationMatrix(degree):
         np.sin(radian), np.cos(radian),
     ])
     return mat
+class EnemyPlane:
+    def __init__(self,speed=1,scale=1):
+        # x, y, , r, g, b, s, t
+  
+        self.vertice= planeVertex.vertice.copy()
+        self.scale = scale
+        self.speed = speed
+        self.vertices = np.array(self.vertice, dtype=np.float32)
+
+        self.vertex_count = len(self.vertice)//5
+     
+        self.vao = glGenVertexArrays(1)
+        glBindVertexArray(self.vao)
+        self.vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+        
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(0))
+        
+        glEnableVertexAttribArray(1)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(8))
+
+        self.rotate(180)
+        self.transform(scale=(self.scale*0.002,self.scale*0.002))
+        self.transform(translate=(0,1))
+
+    def transform(self,translate=(0,0),scale=(1,1)):
+
+        x,y = translate
+        sx,sy=scale
+        for i in range(len(self.vertice)):
+            if(i>= 5):
+                temp = (i)%5
+                if(temp >=2):
+                    continue
+                else:
+                    if(temp==0):
+                        self.vertice[i]+=x
+                        self.vertice[i]*=sx
+                    else:
+                        self.vertice[i]+=y
+                        self.vertice[i]*=sy
+            else:
+                if(i>=2):
+                    continue
+                else:
+                    if(i==0):
+                        self.vertice[i]+=x
+                        self.vertice[i]*=sx
+                    else:
+                        self.vertice[i]+=y
+                        self.vertice[i]*=sy
+
+
+        self.vertices = np.array(self.vertice, dtype=np.float32)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+
+
+    def rotate(self,theta):
+        prv_x = None
+        prv_y = None
+        rotation_mat = rotationMatrix(theta)
+        for i in range(len(self.vertice)):
+            if(i>= 5):
+                temp = (i)%5
+                if(temp >=2):
+                    continue
+                else:
+                    if(temp==0):
+                        prv_x=self.vertice[i]
+                        self.vertice[i]=(self.vertice[i]*rotation_mat[0] + self.vertice[i+1]*rotation_mat[1] )
+                    else:
+                        self.vertice[i]=(prv_x*rotation_mat[2]+ self.vertice[i]*rotation_mat[3] )
+            else:
+                if(i>=2):
+                    continue
+                else:
+                    if(i==0):
+                        prv_x=self.vertice[i]
+                        self.vertice[i]=(self.vertice[i]*rotation_mat[0] + self.vertice[i+1]*rotation_mat[1] )
+                    else:
+                        self.vertice[i]=(prv_x*rotation_mat[2]+ self.vertice[i]*rotation_mat[3] )
+
+
+        self.vertices = np.array(self.vertice, dtype=np.float32)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+    
+    def update(self,game):
+        self.transform(translate=(0,self.speed*-0.005))
+        for bullet in game.bullets:
+            # print("start -----------")
+            # print(bullet.vertice[(4-1)*5])
+            # print(self.vertice[(29-1)*5])
+            # print("end -----------")
+            if(
+                ( bullet.vertice[(4-1)*5] >= self.vertice[(8-1)*5] and  bullet.vertice[(4-1)*5] <= self.vertice[(29-1)*5]   )
+             and
+              ( bullet.vertice[(4-1)*5+1] >= self.vertice[0+1] and  bullet.vertice[(4-1)*5+1] <= self.vertice[(20-1)*5+1]   )
+              ):
+                game.bullets.remove(bullet)
+                game.enemies.remove(self)
+                game.score+=1
+                game.explosion_sound.play()
+            else:
+                if(bullet.vertice[(4-1)*5+1] >=1):
+                    game.bullets.remove(bullet)
+                if(self.vertice[(20-1)*5+1] < -1 and self in game.enemies):
+                    game.enemies.remove(self)
+                    game.lost=True
+
+
+
+
+
+    def destroy(self):
+        glDeleteVertexArrays(1, (self.vao,))
+        glDeleteBuffers(1,(self.vbo,))
+
+def draw_text(text,x,y):
+    font = pg.font.SysFont('arial', 30)
+    textSurface = font.render(text, True, (152,251,152, 255), (25.5, 51, 51, 255))
+    textData = pg.image.tostring(textSurface, "RGBA", True)
+    glWindowPos2d(x, y)
+    glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+
+
+class Bullet:
+    def __init__(self,x,y,speed):
+        # x, y, , r, g, b, s, t
+  
+        # self.vertice=  planeVertex.vertice.copy()
+        self.vertice=  [
+            x-0.025,y, 0,0,1,
+            x+0.025,y,0,1,0,
+            x+0.025,y+0.1,0,1,1,
+
+            x-0.025,y, 0,0,1,
+            x-0.025,y+0.1,1,1,0,
+            x+0.025,y+0.1,0,1,1,
+
+        ]
+       
+        self.speed = speed
+        self.vertices = np.array(self.vertice, dtype=np.float32)
+
+        self.vertex_count = len(self.vertice)//5
+
+        self.vao = glGenVertexArrays(1)
+        glBindVertexArray(self.vao)
+        self.vbo = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(0))
+        
+        glEnableVertexAttribArray(1)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(8))
+
+    def transform(self,translate=(0,0),scale=(1,1)):
+
+        x,y = translate
+        sx,sy=scale
+        for i in range(len(self.vertice)):
+            if(i>= 5):
+                temp = (i)%5
+                if(temp >=2):
+                    continue
+                else:
+                    if(temp==0):
+                        self.vertice[i]+=x
+                        self.vertice[i]*=sx
+                    else:
+                        self.vertice[i]+=y
+                        self.vertice[i]*=sy
+            else:
+                if(i>=2):
+                    continue
+                else:
+                    if(i==0):
+                        self.vertice[i]+=x
+                        self.vertice[i]*=sx
+                    else:
+                        self.vertice[i]+=y
+                        self.vertice[i]*=sy
+
+    
+        self.vertices = np.array(self.vertice, dtype=np.float32)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+
+    def update(self):
+        self.transform(translate=(0,self.speed*0.005))
+
+    def rotate(self,theta):
+        prv_x = None
+        prv_y = None
+        rotation_mat = rotationMatrix(theta)
+        for i in range(len(self.vertice)):
+            if(i>= 5):
+                temp = (i)%5
+                if(temp >=2):
+                    continue
+                else:
+                    if(temp==0):
+                        prv_x=self.vertice[i]
+                        self.vertice[i]=(self.vertice[i]*rotation_mat[0] + self.vertice[i+1]*rotation_mat[1] )
+                    else:
+                        self.vertice[i]=(prv_x*rotation_mat[2]+ self.vertice[i]*rotation_mat[3] )
+            else:
+                if(i>=2):
+                    continue
+                else:
+                    if(i==0):
+                        prv_x=self.vertice[i]
+                        self.vertice[i]=(self.vertice[i]*rotation_mat[0] + self.vertice[i+1]*rotation_mat[1] )
+                    else:
+                        self.vertice[i]=(prv_x*rotation_mat[2]+ self.vertice[i]*rotation_mat[3] )
+
+
+        self.vertices = np.array(self.vertice, dtype=np.float32)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
+
+    def destroy(self):
+        glDeleteVertexArrays(1, (self.vao,))
+        glDeleteBuffers(1,(self.vbo,))
+
+
+def rotationMatrix(degree):
+    radian = degree * np.pi / 180.0
+    mat = np.array([
+        np.cos(radian), -np.sin(radian),
+        np.sin(radian), np.cos(radian),
+    ])
+    return mat
+
+def start():
+    myApp = App()
+
+def promp_screen(game):
+    pg.init()
+    clock = pg.time.Clock()
+    display = (400, 300)
+    pg.display.set_mode(display, DOUBLEBUF | OPENGL)
+    run = True
+
+    while run:
+        clock.tick(100)
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                run = False
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_SPACE:
+                    game.background_sound.fadeout(4000)
+                    App()
+                if event.key == pg.K_q:
+                    pg.quit()
+                    exit()
+
+
+        glClearColor(0.1, 0.2, 0.2, 1)
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+        draw_text( "Game Over",120, 220)
+        draw_text( f"Score : {game.score}",120, 190)
+        draw_text("Press :",40, 120)
+        draw_text("Space To Play Again",120, 80)
+        draw_text("q To Quit The Game",120, 40)
+        pg.display.flip()
+
+    pg.quit()
+    exit()
+
+start()
+
